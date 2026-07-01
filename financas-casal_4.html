@@ -335,8 +335,14 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) showMsg(error.message, 'error');
+  if (!email || !pass) { showMsg('Preencha email e senha', 'error'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { showMsg('Email ou senha incorretos', 'error'); return; }
+  userId = data.user.id;
+  document.getElementById('auth-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'block';
+  await loadAll();
+  render();
 }
 async function doRegister() {
   const email = document.getElementById('reg-email').value.trim();
@@ -345,14 +351,24 @@ async function doRegister() {
   if (error) showMsg(error.message, 'error');
   else showMsg('Conta criada! Verifique seu email para confirmar.', 'success');
 }
-async function doLogout() { await sb.auth.signOut(); }
+async function doLogout() {
+  await sb.auth.signOut();
+  userId = null;
+  D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
+  document.getElementById('app-wrap').style.display = 'none';
+  document.getElementById('auth-wrap').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('auth-msg').className = 'auth-msg';
+}
 
 sb.auth.onAuthStateChange(async (event, session) => {
-  if (session) {
+  if (session && session.user) {
     userId = session.user.id;
     document.getElementById('auth-wrap').style.display = 'none';
     document.getElementById('app-wrap').style.display = 'block';
-    await loadAll(); render();
+    await loadAll();
+    render();
   } else {
     userId = null;
     document.getElementById('auth-wrap').style.display = 'flex';
