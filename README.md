@@ -312,14 +312,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const SUPABASE_URL = 'https://mqhzsiaafvigfkmkpvif.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZjF3nMGF09t1BcDtXyPURw_kn4ejlDM';
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} }
-  }
-});
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentMonth = new Date().getMonth();
 let histYear = new Date().getFullYear();
@@ -358,8 +351,8 @@ async function doRegister() {
   if (error) showMsg(error.message, 'error');
   else showMsg('Conta criada! Verifique seu email para confirmar.', 'success');
 }
-function doLogout() {
-  sb.auth.signOut({ scope: 'local' }).catch(() => {});
+async function doLogout() {
+  await sb.auth.signOut();
   userId = null;
   D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
   document.getElementById('app-wrap').style.display = 'none';
@@ -369,7 +362,19 @@ function doLogout() {
   document.getElementById('auth-msg').className = 'auth-msg';
 }
 
-sb.auth.onAuthStateChange(() => {});
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    userId = session.user.id;
+    document.getElementById('auth-wrap').style.display = 'none';
+    document.getElementById('app-wrap').style.display = 'block';
+    await loadAll();
+    render();
+  } else {
+    userId = null;
+    document.getElementById('auth-wrap').style.display = 'flex';
+    document.getElementById('app-wrap').style.display = 'none';
+  }
+});
 
 async function loadAll() {
   const [f, v, r, u, us] = await Promise.all([
