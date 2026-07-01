@@ -347,16 +347,14 @@ async function doRegister() {
 }
 async function doLogout() {
   try {
-    await sb.auth.signOut();
-    userId = null;
-    D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
-    document.getElementById('app-wrap').style.display = 'none';
-    document.getElementById('auth-wrap').style.display = 'flex';
-  } catch(e) {
-    console.error(e);
-    document.getElementById('app-wrap').style.display = 'none';
-    document.getElementById('auth-wrap').style.display = 'flex';
-  }
+    await sb.auth.signOut({ scope: 'local' });
+  } catch(e) {}
+  userId = null;
+  D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
+  document.getElementById('app-wrap').style.display = 'none';
+  document.getElementById('auth-wrap').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
 }
 
 sb.auth.onAuthStateChange(async (event, session) => {
