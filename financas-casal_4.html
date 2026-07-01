@@ -141,6 +141,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
       <div class="progress-bar"><div class="progress-fill" id="r-prog" style="width:0%"></div></div>
       <div style="font-size:12px;color:var(--gt);margin-top:6px" id="r-pct">0% comprometido</div>
     </div>
+    <div class="card" id="card-walney-min">
+      <div class="card-title">Mínimo Walney este mês</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-size:12px;color:var(--gt);margin-bottom:2px">Precisa faturar pelo menos</div>
+          <div style="font-size:22px;font-weight:700" id="r-walney-min">R$ 0</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--gt);margin-bottom:2px">Já ganhou</div>
+          <div style="font-size:18px;font-weight:700" id="r-walney-ganhou">R$ 0</div>
+        </div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="r-walney-prog" style="width:0%"></div></div>
+      <div style="font-size:12px;color:var(--gt);margin-top:6px" id="r-walney-msg"></div>
+    </div>
     <div class="card">
       <div class="card-title">Vencimentos do mês</div>
       <div id="r-venc"></div>
@@ -539,14 +554,14 @@ function calcMonth(m, y) {
   const totalFixas = D.fixas.reduce((a, f) => a + f.valor, 0);
   const vars = getVarsForMonth(m, y);
   const totalVar = vars.reduce((a, v) => a + v.valor, 0);
-  const uberMeta = D.uber ? D.uber.meta * 4 : 0;
+  const uberMeta = D.uber ? D.uber.meta : 0;
   const uberGanho = D.uberSemanas.filter(s => s.mes === key).reduce((a, s) => a + s.val, 0);
   const totalRendas = D.rendas.reduce((a, r) => a + r.valor, 0);
-  const totalIncome = totalRendas + uberMeta;
+  const totalIncome = totalRendas + uberGanho;
   const totalGastos = totalFixas + totalVar;
   const saldo = totalIncome - totalGastos;
   const pct = totalIncome > 0 ? Math.round((totalGastos / totalIncome) * 100) : 0;
-  const uberPct = uberMeta > 0 ? Math.round((uberGanho / uberMeta) * 100) : 0;
+  const uberPct = uberMeta > 0 ? Math.round((uberGanho / (uberMeta * 4)) * 100) : 0;
   return { totalFixas, totalVar, totalGastos, uberMeta, uberGanho, totalRendas, totalIncome, saldo, pct, uberPct, vars, key };
 }
 
@@ -611,12 +626,29 @@ function render() {
   const sEl = document.getElementById('r-saldo');
   sEl.textContent = fmt(c.saldo);
   sEl.className = 'metric-value ' + (c.saldo >= 0 ? 'green' : 'red');
-  document.getElementById('r-uber').textContent = c.uberPct + '%';
+  const uberEl = document.getElementById('r-uber');
+  uberEl.textContent = fmt(c.uberGanho);
+  uberEl.className = 'metric-value ' + (c.uberGanho >= (c.uberMeta * 4) ? 'green' : 'purple');
+  document.getElementById('r-uber').previousElementSibling.textContent = 'Walney este mês';
   const prog = document.getElementById('r-prog');
   prog.style.width = Math.min(c.pct, 100) + '%';
   prog.className = 'progress-fill ' + (c.pct > 100 ? 'danger' : c.pct > 80 ? '' : 'ok');
   document.getElementById('r-pct').textContent = c.pct + '% comprometido';
 
+  const minimoWalney = Math.max(0, c.totalGastos - c.totalRendas);
+  const wPct = minimoWalney > 0 ? Math.min(Math.round((c.uberGanho / minimoWalney) * 100), 100) : 100;
+  document.getElementById('r-walney-min').textContent = fmt(minimoWalney);
+  document.getElementById('r-walney-min').style.color = minimoWalney === 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('r-walney-ganhou').textContent = fmt(c.uberGanho);
+  document.getElementById('r-walney-ganhou').style.color = c.uberGanho >= minimoWalney ? 'var(--green)' : 'var(--amber)';
+  const wProg = document.getElementById('r-walney-prog');
+  wProg.style.width = wPct + '%';
+  wProg.className = 'progress-fill ' + (wPct >= 100 ? 'ok' : wPct >= 60 ? '' : 'danger');
+  document.getElementById('r-walney-msg').textContent = minimoWalney === 0
+    ? '✅ Salário da Jessica já cobre tudo!'
+    : c.uberGanho >= minimoWalney
+      ? `✅ Meta batida! Faturou ${fmt(c.uberGanho - minimoWalney)} a mais`
+      : `⚠️ Falta ${fmt(minimoWalney - c.uberGanho)} para cobrir as contas`;
   const sortedF = [...D.fixas].sort((a, b) => a.dia - b.dia);
   document.getElementById('r-venc').innerHTML = sortedF.length
     ? sortedF.map(f => `<div class="row"><span class="row-name">${f.nome}</span><span class="row-day">dia ${f.dia}</span><span class="row-val">${fmt(f.valor)}</span></div>`).join('')
@@ -648,7 +680,7 @@ function render() {
     : '<div class="empty">Nenhuma renda cadastrada ainda.</div>';
 
   document.getElementById('uber-meta-display').textContent = D.uber
-    ? `Meta: ${fmt(D.uber.meta)}/semana → estimativa mensal: ${fmt(D.uber.meta * 4)}` : '';
+    ? `Meta de referência: ${fmt(D.uber.meta)}/semana (${fmt(D.uber.meta * 4)}/mês) — renda real = somatório das semanas abaixo` : '';
 
   const sems = D.uberSemanas.filter(s => s.mes === c.key);
   let semsHtml = '';
