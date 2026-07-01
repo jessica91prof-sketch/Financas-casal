@@ -316,7 +316,8 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
+    storage: { getItem: () => null, setItem: () => {}, removeItem: () => {} }
   }
 });
 
