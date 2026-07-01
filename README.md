@@ -312,7 +312,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const SUPABASE_URL = 'https://mqhzsiaafvigfkmkpvif.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_ZjF3nMGF09t1BcDtXyPURw_kn4ejlDM';
 const { createClient } = supabase;
-const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
 
 let currentMonth = new Date().getMonth();
 let histYear = new Date().getFullYear();
@@ -335,8 +341,14 @@ function openModal(id) { document.getElementById(id).classList.add('open'); }
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value;
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  if (error) showMsg(error.message, 'error');
+  if (!email || !pass) { showMsg('Preencha email e senha', 'error'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { showMsg('Email ou senha incorretos', 'error'); return; }
+  userId = data.user.id;
+  document.getElementById('auth-wrap').style.display = 'none';
+  document.getElementById('app-wrap').style.display = 'block';
+  await loadAll();
+  render();
 }
 async function doRegister() {
   const email = document.getElementById('reg-email').value.trim();
@@ -346,25 +358,17 @@ async function doRegister() {
   else showMsg('Conta criada! Verifique seu email para confirmar.', 'success');
 }
 function doLogout() {
-  sb.auth.signOut({ scope: 'local' }).finally(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.reload();
-  });
+  sb.auth.signOut({ scope: 'local' }).catch(() => {});
+  userId = null;
+  D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
+  document.getElementById('app-wrap').style.display = 'none';
+  document.getElementById('auth-wrap').style.display = 'flex';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('auth-msg').className = 'auth-msg';
 }
 
-sb.auth.onAuthStateChange(async (event, session) => {
-  if (session) {
-    userId = session.user.id;
-    document.getElementById('auth-wrap').style.display = 'none';
-    document.getElementById('app-wrap').style.display = 'block';
-    await loadAll(); render();
-  } else {
-    userId = null;
-    document.getElementById('auth-wrap').style.display = 'flex';
-    document.getElementById('app-wrap').style.display = 'none';
-  }
-});
+sb.auth.onAuthStateChange(() => {});
 
 async function loadAll() {
   const [f, v, r, u, us] = await Promise.all([
