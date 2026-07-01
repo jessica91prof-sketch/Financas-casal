@@ -345,7 +345,19 @@ async function doRegister() {
   if (error) showMsg(error.message, 'error');
   else showMsg('Conta criada! Verifique seu email para confirmar.', 'success');
 }
-async function doLogout() { await sb.auth.signOut(); }
+async function doLogout() {
+  try {
+    await sb.auth.signOut();
+    userId = null;
+    D = { fixas: [], variaveis: [], rendas: [], uber: null, uberSemanas: [] };
+    document.getElementById('app-wrap').style.display = 'none';
+    document.getElementById('auth-wrap').style.display = 'flex';
+  } catch(e) {
+    console.error(e);
+    document.getElementById('app-wrap').style.display = 'none';
+    document.getElementById('auth-wrap').style.display = 'flex';
+  }
+}
 
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session) {
