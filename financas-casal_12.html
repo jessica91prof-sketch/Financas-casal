@@ -367,7 +367,11 @@ sb.auth.onAuthStateChange(async (event, session) => {
     userId = session.user.id;
     document.getElementById('auth-wrap').style.display = 'none';
     document.getElementById('app-wrap').style.display = 'block';
-    await loadAll();
+    try {
+      await loadAll();
+    } catch(e) {
+      console.error('Erro ao carregar dados:', e);
+    }
     render();
   } else {
     userId = null;
@@ -377,11 +381,12 @@ sb.auth.onAuthStateChange(async (event, session) => {
 });
 
 async function loadAll() {
+  if (!userId) return;
   const [f, v, r, u, us] = await Promise.all([
     sb.from('fixas').select('*').eq('user_id', userId),
     sb.from('variaveis').select('*').eq('user_id', userId),
     sb.from('rendas').select('*').eq('user_id', userId),
-    sb.from('uber').select('*').eq('user_id', userId).single(),
+    sb.from('uber').select('*').eq('user_id', userId).maybeSingle(),
     sb.from('uber_semanas').select('*').eq('user_id', userId)
   ]);
   D.fixas = f.data || [];
